@@ -1,13 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ContactsApp.Data;
 using ContactsApp.Models;
 using OpenTelemetry.Trace;
+using System.Diagnostics.Metrics;
+using System.Diagnostics;
+using ContactsApp.Service;
 
 namespace ContactsApp.Controllers
 {
@@ -16,18 +14,21 @@ namespace ContactsApp.Controllers
     public class ContactsController : ControllerBase
     {
         private readonly ContactsAppDbContext _context;
-        private readonly Tracer _tracer;
+        private ILogger<ContactsController> _logger;
+        private ContactMetrics _metrics;
 
-        public ContactsController([FromServices] ILogger<ContactsController> logger,ContactsAppDbContext context, Tracer tracer)
+
+        public ContactsController(ILogger<ContactsController> logger, ContactMetrics metrics, ContactsAppDbContext context, Tracer tracer)
         {
             _context = context;
-            _tracer = tracer;
+            _logger = logger;
+            _metrics = metrics;
         }
 
         // GET: api/Contacts
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Contact>>> GetContacts()
-        { 
+        {            
             if (_context.Contacts == null)
           {
               return NotFound();
@@ -90,6 +91,14 @@ namespace ContactsApp.Controllers
         [HttpPost]
         public async Task<ActionResult<Contact>> PostContact(Contact contact)
         {
+            var watch = new Stopwatch();
+            watch.Start();
+
+            int contacts = _context.Contacts.Count();
+
+            _metrics.ToTalContactUpdate(contacts + 1);
+            _logger.LogInformation("INCRIMENT Counter" + _metrics.TotalContact());
+
             if (_context.Contacts == null)
           {
               return Problem("Entity set 'ContactsAppDbContext.Contacts'  is null.");
@@ -97,14 +106,45 @@ namespace ContactsApp.Controllers
             _context.Contacts.Add(contact);
             await _context.SaveChangesAsync();
 
+            watch.Stop();
+            long responseTimeForCompleteRequest = watch.ElapsedMilliseconds;
+
+            _metrics.RecordContactCreationProcess(responseTimeForCompleteRequest);
+            _logger.LogInformation("Recorded Contact Creation Time" + _metrics.RecordedContactCreationProcess());
 
             return CreatedAtAction("GetContact", new { id = contact.Id }, contact);
         }
+
+        //[HttpPost]
+        //public async Task<IList<Contact>> PostContacts(IList<Contact> cts)
+        //{
+        //    var watch = new Stopwatch();
+        //    watch.Start();
+
+        //    foreach (var contact in cts)
+        //    {
+        //        int contacts = _context.Contacts.Count();
+
+        //        _metrics.ToTalContactUpdate(contacts + 1);
+        //        _logger.LogInformation("INCRIMENT Counter" + _metrics.TotalContact());
+
+        //        _context.Contacts.Add(contact);
+        //        await _context.SaveChangesAsync(); 
+        //    }
+        //    watch.Stop();
+        //    long responseTimeForCompleteRequest = watch.ElapsedMilliseconds;
+
+        //    _metrics.RecordContactCreationProcess(responseTimeForCompleteRequest);
+        //    _logger.LogInformation("Recorded Contact Creation Time" + _metrics.RecordedContactCreationProcess());
+
+        //    return await _context.Contacts.ToListAsync();
+        //}
 
         // DELETE: api/Contacts/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteContact(int id)
         {
+            _metrics.ToTalContactUpdate(-1);
             if (_context.Contacts == null)
             {
                 return NotFound();

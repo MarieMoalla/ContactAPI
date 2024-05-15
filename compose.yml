@@ -7,11 +7,18 @@ services:
     restart: always
     ports:
       - '16686:16686'
-      - '13133:13133'
       - '4317:4317'
+
   prometheus:
     image: prom/prometheus:v2.42.0
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
     ports:
       - "9090:9090"
+  opentelemetry-collector:
+    image: otel/opentelemetry-collector
+    ports:
+      #- "4318:4317"
+      - "4318:4318"
+    volumes:
+      - ./collector-config.yaml:/etc/otelcol/config.yaml

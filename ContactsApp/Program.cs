@@ -1,5 +1,6 @@
 using ContactsApp.Data;
 using ContactsApp.Models;
+using ContactsApp.Service;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OpenTelemetry;
@@ -42,13 +43,18 @@ builder.Services.AddOpenTelemetry()
           .AddAspNetCoreInstrumentation()
           .AddHttpClientInstrumentation()
           .AddSqlClientInstrumentation()
-          .AddConsoleExporter().AddOtlpExporter(opts => opts.Endpoint = new Uri("http://localhost:4317")))
+          .AddOtlpExporter(opts => opts.Endpoint = new Uri("http://localhost:4317"))
+          .AddConsoleExporter())
       .WithMetrics(metrics => metrics
           .AddAspNetCoreInstrumentation()
-          .AddHttpClientInstrumentation()
+          .AddHttpClientInstrumentation().AddPrometheusExporter()
+          //.AddOtlpExporter(opts => opts.Endpoint = new Uri("http://localhost:9090"))
           .AddConsoleExporter());
 
 builder.Services.AddSingleton(TracerProvider.Default.GetTracer(TelemetryConstants.MyAppSource));
+
+//Register metric service with DI
+builder.Services.AddSingleton<ContactMetrics>();
 
 builder.Services.AddControllers();
 builder.Services.AddDbContext<ContactsAppDbContext>(options =>
