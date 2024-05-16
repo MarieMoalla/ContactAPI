@@ -15,10 +15,3 @@ services:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
     ports:
       - "9090:9090"
-  opentelemetry-collector:
-    image: otel/opentelemetry-collector
-    ports:
-      #- "4318:4317"
-      - "4318:4318"
-    volumes:
-      - ./collector-config.yaml:/etc/otelcol/config.yaml

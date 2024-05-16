@@ -28,7 +28,7 @@ namespace ContactsApp.Controllers
         // GET: api/Contacts
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Contact>>> GetContacts()
-        {            
+        {     
             if (_context.Contacts == null)
           {
               return NotFound();

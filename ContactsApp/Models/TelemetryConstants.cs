@@ -9,7 +9,7 @@ public static class TelemetryConstants
     /// The name of the ActivitySource/Tracer that is going to produce our TRACES and
     /// the Meter that is going to produce our METRICS.
     /// </summary>
-    public const string MyAppSource = "ContactsApp";
+    public const string MyAppSource = "contact.service";
 
     public static readonly ActivitySource DemoTracer = new ActivitySource(MyAppSource);
 
