@@ -13,7 +13,4 @@ scrape_configs:
 
   - job_name: "OpenTelemetryMetrics"
     static_configs:
-      - targets: 
-        - "localhost:9091" # simple localhost 
-        - "docker.host.internal:9091" # the localhost of agent that runs the docker container
-        - "myService:9091" # docker container name (worked in my case)
+      - targets: ["localhost:7193"] 

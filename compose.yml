@@ -1,13 +1,14 @@
 version: '3.7'
 
 services:
-  jaeger:
-    image: jaegertracing/all-in-one
-    hostname: jaeger
+
+  seq:
+    image: datalust/seq
     restart: always
+    environment:
+      - ACCEPT_EULA=Y
     ports:
-      - '16686:16686'
-      - '4317:4317'
+      - '5341:80'
 
   prometheus:
     image: prom/prometheus:v2.42.0
@@ -15,3 +16,19 @@ services:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
     ports:
       - "9090:9090"
+
+  contactsapp:
+    image: contacts-app
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_HTTP_PORTS=80
+    ports:
+      - "8000:80"
+
+
+networks:
+  otelnetwork:
+    ipam:
+      config:
+        - subnet: "172.16.238.0/24"
+        - subnet: "2001:3984:3989::/64"
