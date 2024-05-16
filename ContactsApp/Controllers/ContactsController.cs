@@ -16,19 +16,19 @@ namespace ContactsApp.Controllers
         private readonly ContactsAppDbContext _context;
         private ILogger<ContactsController> _logger;
         private ContactMetrics _metrics;
-
-
-        public ContactsController(ILogger<ContactsController> logger, ContactMetrics metrics, ContactsAppDbContext context, Tracer tracer)
+        private readonly IContactTraces _traces; 
+        public ContactsController(ILogger<ContactsController> logger, ContactMetrics metrics, ContactsAppDbContext context, Tracer tracer, IContactTraces contactTraces)
         {
             _context = context;
             _logger = logger;
             _metrics = metrics;
+            _traces = contactTraces;
         }
 
         // GET: api/Contacts
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Contact>>> GetContacts()
-        {     
+        {  
             if (_context.Contacts == null)
           {
               return NotFound();
@@ -91,26 +91,47 @@ namespace ContactsApp.Controllers
         [HttpPost]
         public async Task<ActionResult<Contact>> PostContact(Contact contact)
         {
-            var watch = new Stopwatch();
-            watch.Start();
+            using (Activity activity = _traces.CreateActivity().StartActivity("{title} Activity"))
+            {
+                var watch = new Stopwatch();
+                watch.Start();
 
-            int contacts = _context.Contacts.Count();
+                activity?.SetTag("title", "start watch");
 
-            _metrics.ToTalContactUpdate(contacts + 1);
-            _logger.LogInformation("INCRIMENT Counter" + _metrics.TotalContact());
+                using (Activity child1 = _traces.CreateActivity().StartActivity("{title} Activity"))
+                {
+                    child1?.SetTag("title", "GET Contacts");
 
-            if (_context.Contacts == null)
-          {
-              return Problem("Entity set 'ContactsAppDbContext.Contacts'  is null.");
-          }
-            _context.Contacts.Add(contact);
-            await _context.SaveChangesAsync();
+                    child1?.AddEvent(new ActivityEvent("Get contacts count"));
+                    int contacts = _context.Contacts.Count();
 
-            watch.Stop();
-            long responseTimeForCompleteRequest = watch.ElapsedMilliseconds;
+                    child1?.AddEvent(new ActivityEvent("Calculate Metric"));
+                    _metrics.ToTalContactUpdate(contacts + 1);
+                    _logger.LogInformation("INCRIMENT Counter" + _metrics.TotalContact());
 
-            _metrics.RecordContactCreationProcess(responseTimeForCompleteRequest);
-            _logger.LogInformation("Recorded Contact Creation Time" + _metrics.RecordedContactCreationProcess());
+                    if (_context.Contacts == null)
+                    {
+                        child1?.SetStatus(ActivityStatusCode.Error, "Something bad happened!");
+                        child1?.RecordException(new Exception("Entity set 'ContactsAppDbContext.Contacts'  is null."));
+                        return Problem("Entity set 'ContactsAppDbContext.Contacts'  is null.");
+                    }
+                    using (Activity child2 = _traces.CreateActivity().StartActivity("{title} Activity"))
+                    {
+                        child2?.SetTag("title", "Create contact");
+
+                        child2?.AddEvent(new ActivityEvent("Add contact to database"));
+                        _context.Contacts.Add(contact);
+                        child2?.AddEvent(new ActivityEvent("Save changes"));
+                        await _context.SaveChangesAsync();
+
+                        watch.Stop();
+                        long responseTimeForCompleteRequest = watch.ElapsedMilliseconds;
+
+                        _metrics.RecordContactCreationProcess(responseTimeForCompleteRequest);
+                        _logger.LogInformation("Recorded Contact Creation Time" + _metrics.RecordedContactCreationProcess());
+                    }
+                }
+            }
 
             return CreatedAtAction("GetContact", new { id = contact.Id }, contact);
         }

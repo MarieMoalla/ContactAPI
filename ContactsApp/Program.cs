@@ -1,5 +1,4 @@
 using ContactsApp.Data;
-using ContactsApp.MetricMiddleware;
 using ContactsApp.Models;
 using ContactsApp.Service;
 using Microsoft.AspNetCore.Mvc;
@@ -11,6 +10,7 @@ using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Prometheus;
+using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using System.Globalization;
 
@@ -19,11 +19,8 @@ using System.Globalization;
 //telling otel that the exported traces all belong to Demo.AspNet
 var resource = ResourceBuilder.CreateDefault().AddService("ContactsApp");
 
-// Custom Metrics to count requests for each endpoint and the method
-var counter = Metrics.CreateCounter("peopleapi_path_counter", "Counts requests to the People API endpoints", new CounterConfiguration
-{
-    LabelNames = new[] { "method", "endpoint" }
-});
+//test Trace creation called contact.source
+ActivitySource tracingSource = new ActivitySource("contact.source");
 
 // Add services to the container.
 var builder = WebApplication.CreateBuilder(args);
@@ -50,6 +47,7 @@ using var tracerProvider = Sdk.CreateTracerProviderBuilder()
 builder.Services.AddOpenTelemetry()
       .ConfigureResource(resource => resource.AddService(TelemetryConstants.MyAppSource))
       .WithTracing(tracing => tracing
+          .AddSource("contact.source")
           .AddAspNetCoreInstrumentation()
           .AddHttpClientInstrumentation()
           .AddSqlClientInstrumentation()
@@ -58,8 +56,7 @@ builder.Services.AddOpenTelemetry()
               opts.Endpoint = new Uri("http://localhost:5341/ingest/otlp/v1/traces");
               opts.Protocol = OtlpExportProtocol.HttpProtobuf;
               opts.Headers = "X-Seq-ApiKey=abcde12345";
-          }
-            )
+          })
           .AddConsoleExporter())
       .WithMetrics(metrics => metrics
           //
@@ -75,6 +72,9 @@ builder.Services.AddSingleton(TracerProvider.Default.GetTracer(TelemetryConstant
 
 //Register metric service with DI
 builder.Services.AddSingleton<ContactMetrics>();
+
+//register traces service
+builder.Services.AddSingleton<IContactTraces, ContactTraces>();
 
 builder.Services.AddControllers();
 builder.Services.AddDbContext<ContactsAppDbContext>(options =>
@@ -95,23 +95,12 @@ if (app.Environment.IsDevelopment())
 }
 app.UseHttpsRedirection();
 
-
-
-app.UseMetricServer();
-app.UseHttpMetrics();
-
 app.UseAuthorization();
 
 app.MapControllers();
 
-//app.UseMetricServer();
-
+app.UseMetricServer();
 //app.UseMetricMiddleware();
-app.Map("/metrics", innerApp =>
-{
-    innerApp.UseMetricMiddleware();
-    innerApp.UseMetricServer();
-});
 
 app.MapPrometheusScrapingEndpoint();
 

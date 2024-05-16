@@ -9,6 +9,7 @@ services:
       - ACCEPT_EULA=Y
     ports:
       - '5341:80'
+    
 
   prometheus:
     image: prom/prometheus:v2.42.0
@@ -24,8 +25,7 @@ services:
       - ASPNETCORE_HTTP_PORTS=80
     ports:
       - "8000:80"
-
-
+      
 networks:
   otelnetwork:
     ipam:
