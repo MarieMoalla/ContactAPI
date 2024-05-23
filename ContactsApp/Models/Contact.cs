@@ -1,4 +1,6 @@
-﻿namespace ContactsApp.Models
+﻿using System.ComponentModel.DataAnnotations.Schema;
+
+namespace ContactsApp.Models
 {
     public class Contact
     {
@@ -8,5 +10,7 @@
         public string  MobileNumber { get; set; }
         public string Address { get; set; } 
 
+        [ForeignKey("UserId")]
+        public int userId { get; set; }
     }
 }

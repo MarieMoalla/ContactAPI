@@ -16,13 +16,15 @@ namespace ContactsApp.Controllers
         private readonly ContactsAppDbContext _context;
         private ILogger<ContactsController> _logger;
         private ContactMetrics _metrics;
+        private UserMetrics _user_metrics;
         private readonly IContactTraces _traces; 
-        public ContactsController(ILogger<ContactsController> logger, ContactMetrics metrics, ContactsAppDbContext context, Tracer tracer, IContactTraces contactTraces)
+        public ContactsController(ILogger<ContactsController> logger, ContactMetrics metrics, UserMetrics userMetrics, ContactsAppDbContext context, Tracer tracer, IContactTraces contactTraces)
         {
             _context = context;
             _logger = logger;
             _metrics = metrics;
             _traces = contactTraces;
+            _user_metrics = userMetrics;
         }
 
         // GET: api/Contacts
@@ -123,6 +125,8 @@ namespace ContactsApp.Controllers
                         _context.Contacts.Add(contact);
                         child2?.AddEvent(new ActivityEvent("Save changes"));
                         await _context.SaveChangesAsync();
+
+                        _user_metrics.RecordNumberOfContactsPerUser(_context.Contacts.Where(c=>c.userId==contact.userId).Count());
 
                         watch.Stop();
                         long responseTimeForCompleteRequest = watch.ElapsedMilliseconds;

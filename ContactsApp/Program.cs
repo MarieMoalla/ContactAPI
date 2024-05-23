@@ -1,4 +1,4 @@
-using ContactsApp.Data;
+﻿using ContactsApp.Data;
 using ContactsApp.Models;
 using ContactsApp.Service;
 using Microsoft.AspNetCore.Mvc;
@@ -13,6 +13,7 @@ using Prometheus;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using System.Globalization;
+using ContactsApp.Controllers;
 
 
 // shared Resource to use for both OTel metrics AND tracing (shared data)
@@ -51,6 +52,7 @@ builder.Services.AddOpenTelemetry()
           .AddAspNetCoreInstrumentation()
           .AddHttpClientInstrumentation()
           .AddSqlClientInstrumentation()
+
           .AddOtlpExporter(opts =>
           {
               opts.Endpoint = new Uri("http://localhost:5341/ingest/otlp/v1/traces");
@@ -59,19 +61,25 @@ builder.Services.AddOpenTelemetry()
           })
           .AddConsoleExporter())
       .WithMetrics(metrics => metrics
-          //
           .AddAspNetCoreInstrumentation()
           .AddHttpClientInstrumentation()
+          .AddRuntimeInstrumentation()
+          .AddProcessInstrumentation()
           .AddPrometheusExporter()
+          .AddView(
+            instrumentName: "http_response_time_get_users",
+            new ExplicitBucketHistogramConfiguration {  Boundaries = new double[] {10,20,30,40,50,60,70,80,90,100} }
+            )
           .AddMeter("contact.service")
-          //.AddPrometheusHttpListener(opt => opt.UriPrefixes = new string[] { "https://localhost:7193" })
-          //.AddOtlpExporter(opts => opts.Endpoint = new Uri("http://localhost:9090"))
+          .AddMeter("user.service")
           .AddConsoleExporter());
 
 builder.Services.AddSingleton(TracerProvider.Default.GetTracer(TelemetryConstants.MyAppSource));
 
 //Register metric service with DI
 builder.Services.AddSingleton<ContactMetrics>();
+
+builder.Services.AddSingleton<UserMetrics>();
 
 //register traces service
 builder.Services.AddSingleton<IContactTraces, ContactTraces>();

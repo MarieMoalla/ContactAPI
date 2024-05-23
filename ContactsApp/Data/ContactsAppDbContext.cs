@@ -1,5 +1,6 @@
 ﻿using ContactsApp.Models;
 using Microsoft.EntityFrameworkCore;
+using System.Reflection.Metadata;
 
 namespace ContactsApp.Data
 {
@@ -7,9 +8,17 @@ namespace ContactsApp.Data
     {
         public ContactsAppDbContext(DbContextOptions<ContactsAppDbContext> options) : base(options)
         {
-
-        }
         
-        public DbSet<Contact> Contacts { get; set; }
+        }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<User>()
+                .HasMany(e => e.Contacts)
+                .WithOne().HasForeignKey(c => c.userId);
+        }
+
+        public DbSet<Contact>? Contacts { get; set; }
+        public DbSet<User> Users { get;set; }
     }
 }

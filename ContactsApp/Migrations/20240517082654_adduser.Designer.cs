@@ -3,6 +3,7 @@ using ContactsApp.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace ContactsApp.Migrations
 {
     [DbContext(typeof(ContactsAppDbContext))]
-    partial class ContactsAppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20240517082654_adduser")]
+    partial class adduser
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -75,9 +78,6 @@ namespace ContactsApp.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<bool>("isMinor")
-                        .HasColumnType("bit");
-
                     b.HasKey("Id");
 
                     b.ToTable("Users");
@@ -85,11 +85,13 @@ namespace ContactsApp.Migrations
 
             modelBuilder.Entity("ContactsApp.Models.Contact", b =>
                 {
-                    b.HasOne("ContactsApp.Models.User", null)
+                    b.HasOne("ContactsApp.Models.User", "user")
                         .WithMany("Contacts")
                         .HasForeignKey("userId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("user");
                 });
 
             modelBuilder.Entity("ContactsApp.Models.User", b =>
